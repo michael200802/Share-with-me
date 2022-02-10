@@ -17,3 +17,6 @@ server: server.o list.o
 
 server.o: server.c
 	$(compiler) -c $? -o $@
+
+clean:
+	rm *.o
