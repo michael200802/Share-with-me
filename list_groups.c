@@ -1,6 +1,6 @@
 #include "list_gropus.h"
 
-bool comp_str(const void * elem, const void * id)
+bool comp_group(const void * elem, const void * id)
 {
     const group_t * group = (const group_t*)elem;
     const char * str1 = group->name, * str2 = (const char *)id;
@@ -28,9 +28,18 @@ void del_group(void * elem)
 inline list_operation_status_t add_group(list_t * list, const char * name)
 {
     group_t * group = (group_t*)malloc(sizeof(group_t));
-    declare_shared_file_list(shared_files_list);
+    if(group == NULL)
+    {
+        return LIST_ERROR_MALLOC;
+    }
+    declare_shared_files_list(shared_files_list);
 
     group->name = strdup(name);
+    if(group->name == NULL)
+    {
+        free(group);
+        return LIST_ERROR_MALLOC;
+    }
     group->shared_files = shared_files_list;
 
     return add_node(list,group);

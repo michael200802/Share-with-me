@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 #include "list.h"
+#include "server_backend.h"
 
 static inline char get_char()
 {
@@ -14,9 +13,10 @@ static inline char get_char()
 int main()
 {
 	pthread_t thread_server_routine;
+	list_t clients, groups;
 	char buffer[100], buffer1[100], option = '\0';
 
-	pthread_create(&thread_server_routine,NULL,server_routine,NULL);
+	init_server(&clients,&groups,MAXN_FD);
 
 	do
 	{

@@ -9,6 +9,7 @@
 #include <sys/poll.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
+#include "list_clients.h"
 #include "list_gropus.h"
 
 #define MAXN_FD 1021
