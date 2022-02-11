@@ -27,6 +27,11 @@ void del_client(void * elem)
 
 list_operation_status_t add_client(list_t * list, const char * name, const char * group)
 {
+    if(find_node(list,name) != NULL)
+    {
+        return LIST_ERROR_NODE_FOUND;
+    }
+    
     client_t * client = (client_t*)malloc(sizeof(client_t));
     if(client == NULL)
     {
@@ -48,5 +53,12 @@ list_operation_status_t add_client(list_t * list, const char * name, const char 
         return LIST_ERROR_MALLOC;
     }
 
-    return add_node(list,client);
+    list_operation_status_t status = add_node(list,client);
+    if(status != LIST_SUCCESS)
+    {
+        free(client->name);
+        free(client->group);
+        free(client);
+    }
+    return status;
 }

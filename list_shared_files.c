@@ -66,10 +66,14 @@ void del_shared_file(void * elem)
 
 inline list_operation_status_t add_shared_file(list_t * list, const char * path)
 {
+    if(find_node(list,path) != NULL)
+    {
+        return LIST_ERROR_NODE_FOUND;
+    }
     shared_file_t * sh_file = create_shared_file(path);
     if(sh_file == NULL)
     {
-        return LIST_ERROR_MALLOC;
+        return LIST_ERROR_CANNOT_OPEN_FILE;
     }
     return add_node(list,sh_file);   
 }

@@ -7,6 +7,7 @@ inline list_operation_status_t add_node(list_t * list, void * elem)
 	node_t * newnode = (node_t*)malloc(sizeof(node_t));
 	if(newnode == NULL)
 	{
+		pthread_mutex_unlock(&list->mutex);
 		return LIST_ERROR_MALLOC;
 	}
 	newnode->elem = elem;
@@ -32,33 +33,34 @@ inline list_operation_status_t add_node(list_t * list, void * elem)
 	return LIST_SUCCESS;
 }
 
-inline node_t * find_node(list_t list, const void * id)
+inline node_t * find_node(list_t * list, const void * id)
 {
-	pthread_mutex_lock(&list.mutex);
+	pthread_mutex_lock(&list->mutex);
 
-	node_t * iterator = list.head;
+	node_t * iterator = list->head;
 	while(iterator != NULL)
 	{
-		if(list.comp_elem(iterator->elem,id) == true)
+		if(list->comp_elem(iterator->elem,id) == true)
 		{
+			pthread_mutex_unlock(&list->mutex);
 			return iterator;
 		}
 		iterator = iterator->nextnode;
 	}
 
-	pthread_mutex_unlock(&list.mutex);
+	pthread_mutex_unlock(&list->mutex);
 	return NULL;
 }
 
-inline list_operation_status_t rm_node(list_t * list, const void * elem)
+inline list_operation_status_t rm_node(list_t * list, const void * id)
 {
-	pthread_mutex_lock(&list->mutex);
-
-	node_t * node = find_node(*list,elem);
+	node_t * node = find_node(list,id);
 	if(node == NULL)
 	{
 		return LIST_ERROR_NODE_NOTFOUND;
 	}
+
+	pthread_mutex_lock(&list->mutex);
 
 	if(node->prevnode != NULL)
 	{

@@ -1,4 +1,4 @@
-#include "list_gropus.h"
+#include "list_groups.h"
 
 bool comp_group(const void * elem, const void * id)
 {
@@ -27,6 +27,11 @@ void del_group(void * elem)
 
 inline list_operation_status_t add_group(list_t * list, const char * name)
 {
+    if(find_node(list,name) != NULL)
+    {
+        return LIST_ERROR_NODE_FOUND;
+    }
+
     group_t * group = (group_t*)malloc(sizeof(group_t));
     if(group == NULL)
     {
@@ -42,5 +47,12 @@ inline list_operation_status_t add_group(list_t * list, const char * name)
     }
     group->shared_files = shared_files_list;
 
-    return add_node(list,group);
+    list_operation_status_t status = add_node(list,group);
+
+    if(status != LIST_SUCCESS)
+    {
+        free(group->name);
+        free(group);
+    }
+    return status;
 }

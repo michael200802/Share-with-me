@@ -40,7 +40,7 @@ void * server_subroutine(void * arg)
 			}
 
 			char buffer[100];
-			if(recv(client.fd, buffer, sizeof(buffer),0) == 1 && find_node(*clients, buffer) != NULL)
+			if(recv(client.fd, buffer, sizeof(buffer),0) == 1 && find_node(clients, buffer) != NULL)
 			{
 				
 			}
@@ -69,20 +69,20 @@ void * server_routine(void * arg)
 	server_sockfd.fd = socket(AF_INET,SOCK_STREAM,0);
 	if(server_sockfd.fd == -1)
 	{
-		perror("socket() failed.");
+		perror("ERROR: socket() failed.");
 		exit(EXIT_FAILURE);
 	}
 	server_sockfd.events = POLLIN;
 
 	if(bind(server_sockfd.fd,(struct sockaddr*)&sockaddr,sizeof(sockaddr)) == -1)
 	{
-		perror("bind() failed.");
+		perror("ERROR: bind() failed.");
 		exit(EXIT_FAILURE);
 	}
 
 	if(listen(server_sockfd.fd,MAXN_FD-1) == -1)
 	{
-		perror("listen() failed.");
+		perror("ERROR: listen() failed.");
 		exit(EXIT_FAILURE);
 	}
 

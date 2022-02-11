@@ -22,16 +22,16 @@ typedef struct
 	pthread_mutex_t mutex;
 }list_t;
 
-enum list_operation_status{LIST_ERROR_NODE_FOUND , LIST_ERROR_NODE_NOTFOUND , LIST_ERROR_MALLOC , LIST_SUCCESS};
+enum list_operation_status{LIST_ERROR_NODE_FOUND , LIST_ERROR_NODE_NOTFOUND , LIST_ERROR_MALLOC , LIST_ERROR_CANNOT_OPEN_FILE , LIST_SUCCESS};
 typedef enum list_operation_status list_operation_status_t;
 
 #define LIST_INITIALIZER(lpfnComp, lpfnDel) {.head = NULL, .tail = NULL, .nnodes = 0, .mutex = PTHREAD_MUTEX_INITIALIZER, .comp_elem = lpfnComp, .del_elem = lpfnDel}
 
 list_operation_status_t add_node(list_t * list, void * elem);
 
-node_t * find_node(list_t list, const void * id);
+node_t * find_node(list_t * list, const void * id);
 
-list_operation_status_t rm_node(list_t * list, const void * elem);
+list_operation_status_t rm_node(list_t * list, const void * id);
 
 void clean_list(list_t * list);
 
