@@ -18,6 +18,17 @@ inline shared_file_t * create_shared_file(const char * path)
         return NULL;
     }
 
+    file->name = file->path;
+    for (size_t i = 0; file->path[i] != '\0'; i++)
+    {
+        if(file->path[i] == '/')
+        {
+            file->name = &file->path[i];
+        }
+    }
+
+    file->name_len = strlen(file->name);
+
     file->fd = open(file->path,O_RDONLY);
     if(file->fd == -1)
     {

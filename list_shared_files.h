@@ -9,10 +9,13 @@
 #include <time.h>
 #include <string.h>
 #include <stdbool.h>
+#include <limits.h>
 
 typedef struct _shared_file
 {
     char * path;
+    char * name;
+    size_t name_len;
     int fd;
     time_t last_change;
 }shared_file_t;

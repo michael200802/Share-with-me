@@ -35,14 +35,12 @@ list_operation_status_t rm_node(list_t * list, const void * id);
 
 void clean_list(list_t * list);
 
-#define scroll_through_list(list, iterator_name, DO)		\
-	{														\
-		pthread_mutex_lock(&list.mutex);					\
-		node_t * iterator_name = list.head;					\
-		while(iterator_name != NULL)						\
-		{													\
-			DO;												\
-			iterator_name = iterator_name->nextnode;		\
-		}													\
-		pthread_mutex_unlock(&list.mutex);					\
+#define scroll_through_list(list, iterator_name, DO)															\
+	{																											\
+		pthread_mutex_lock(&list.mutex);																		\
+		for(node_t * iterator_name = list.head;	iterator_name != NULL; iterator_name = iterator_name->nextnode)	\
+		{																										\
+			DO;																									\
+		}																										\
+		pthread_mutex_unlock(&list.mutex);																		\
 	}

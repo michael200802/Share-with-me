@@ -11,6 +11,9 @@
 #include <stdbool.h>
 #include "list_clients.h"
 #include "list_groups.h"
+#include <sys/types.h>
+#include <sys/mman.h>
+#include "packet.h"
 
 #define MAXN_FD 1021
 

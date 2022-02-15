@@ -2,49 +2,220 @@
 
 typedef struct
 {
-	struct pollfd fds[MAXN_FD-1];
-	size_t nfds;
+	struct pollfd fd;
+	list_t * sh_files;
+}connection_t;
+
+
+typedef struct
+{
+	connection_t connections[MAXN_FD-1];
+	size_t nconnections;
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
 }stack_t;
 
 list_t * clients;
 list_t * groups;
-stack_t stack = {.nfds = 0, .mutex = PTHREAD_MUTEX_INITIALIZER, .cond = PTHREAD_COND_INITIALIZER};
+stack_t stack = {.nconnections = 0, .mutex = PTHREAD_MUTEX_INITIALIZER, .cond = PTHREAD_COND_INITIALIZER};
 
 void * server_subroutine(void * arg)
 {
+	connection_t connection;
 	struct pollfd client;
+	list_t * sh_files;
 
 	while(true)
 	{
-		//get a client
+		//get a client 
 		pthread_mutex_lock(&stack.mutex);
 
-		while(stack.nfds == 0)
+		while(stack.nconnections == 0)
 		{
 			pthread_cond_wait(&stack.cond,&stack.mutex);
 		}
 
-		stack.nfds--;
-		client = stack.fds[stack.nfds];
+		stack.nconnections--;
+		connection = stack.connections[stack.nconnections];
+		client = connection.fd;
+		sh_files = connection.sh_files;
 
 		pthread_mutex_unlock(&stack.mutex);
 
+		//poll connection
 		if(poll(&client,1,-1) != -1)
 		{
+			packet_type_t pack_type;
+
 			if(client.revents == POLLERR || client.revents == 0)
 			{
 				close(client.fd);
 				continue;
 			}
 
-			char buffer[100];
-			if(recv(client.fd, buffer, sizeof(buffer),0) == 1 && find_node(clients, buffer) != NULL)
+			if(sh_files == NULL)
 			{
-				
+				pack_type = PT_LOGIN;
 			}
+			else
+			{
+				if(recv(client.fd, &pack_type, sizeof(packet_type_t), 0) != sizeof(packet_type_t))
+				{
+					close(client.fd);
+					continue;
+				}
+			}
+
+			switch (pack_type)
+			{
+			case PT_LOGIN:
+				{
+					char * client_name;
+					namesize_t client_name_len;
+					const char * group_name;
+					node_t * node;
+
+					//get client's name
+
+					if (recv(client.fd, &client_name_len, sizeof(client_name_len), 0) != sizeof(client_name_len) || client_name_len == 0)
+					{
+						close(client.fd);
+						continue;
+					}
+
+					client_name = (char*)malloc(client_name_len);
+					if(client_name == NULL)
+					{
+						close(client.fd);
+						continue;
+					}
+
+					if (recv(client.fd, client_name, client_name_len, 0) == client_name_len)
+					{
+						free(client_name);
+						close(client.fd);
+						continue;
+					}
+					
+					//find the client
+					node = find_node(clients, client_name);
+
+					if(node != NULL)
+					{
+						//set up the new connection
+
+						group_name = ((client_t*)node->elem)->group;
+
+						node = find_node(groups, group_name);
+
+						sh_files = &((group_t*)node->elem)->shared_files;
+
+						pthread_mutex_lock(&stack.mutex);
+						stack.connections[stack.nconnections].fd = client;
+						stack.connections[stack.nconnections].sh_files = sh_files;
+						stack.nconnections++;
+						pthread_mutex_unlock(&stack.mutex);
+					}
+					else
+					{
+						//close the connection
+						close(client.fd);
+					}
+
+					free(client_name);
+				}
+				break;
+			case PT_REQUEST_FOR_UPDATE:	
+					//send every file
+					{
+						bool error_with_connection = false;
+						scroll_through_list
+						(
+							(*sh_files),
+							ptrtonode,
+							{
+								const shared_file_t * file;
+								struct stat file_stat;
+								size_t file_size;
+								char * mapped_file;
+								packetsize_t packsize = {};
+
+								file = ((shared_file_t*)ptrtonode->elem);
+
+								if(fstat(file->fd,&file_stat) == -1 || file_stat.st_ctime == file->last_change)
+								{
+									if(send(client.fd, &packsize, sizeof(packsize), 0) != sizeof(packsize))
+									{
+										error_with_connection = true;
+										close(client.fd);
+										break;
+									}
+									continue;
+								}
+
+								file_size = file_stat.st_size;
+
+								mapped_file = mmap(NULL,file_size,PROT_READ,MAP_PRIVATE,file->fd,0);
+								if(mapped_file == (char *)-1)
+								{
+									if(send(client.fd, &packsize, sizeof(packsize), 0) != sizeof(packsize))
+									{
+										error_with_connection = true;
+										close(client.fd);
+										break;
+									}
+									continue;
+								}
+
+								packsize.name_len = file->name_len;
+								packsize.file_size = file_size;
+
+								if(send(client.fd, &packsize, sizeof(packsize), 0) != sizeof(packsize))
+								{
+									error_with_connection = true;
+									close(client.fd);
+									munmap(mapped_file,file_size);
+									break;	
+								}
+
+								if(send(client.fd, file->name, file->name_len, 0) != file->name_len)
+								{
+									error_with_connection = true;
+									close(client.fd);
+									munmap(mapped_file,file_size);
+									break;
+								}
+
+								if(send(client.fd, mapped_file, file_size, 0) != file_size)
+								{
+									error_with_connection = true;
+									close(client.fd);
+									munmap(mapped_file,file_size);
+									break;
+								}
+
+								munmap(mapped_file,file_size);	
+							}
+						);
+						if(error_with_connection == false)
+						{
+							pthread_mutex_lock(&stack.mutex);
+							stack.connections[stack.nconnections] = connection;
+							pthread_mutex_unlock(&stack.mutex);
+						}
+					}
+				break;
 			
+			case PT_LOGOUT:
+				close(client.fd);
+				break;
+			
+			default:
+				close(client.fd);
+				break;
+			}
+
+	
 		}
 	}
 
@@ -69,20 +240,20 @@ void * server_routine(void * arg)
 	server_sockfd.fd = socket(AF_INET,SOCK_STREAM,0);
 	if(server_sockfd.fd == -1)
 	{
-		perror("ERROR: socket() failed.");
+		perror("socket() failed.");
 		exit(EXIT_FAILURE);
 	}
 	server_sockfd.events = POLLIN;
 
 	if(bind(server_sockfd.fd,(struct sockaddr*)&sockaddr,sizeof(sockaddr)) == -1)
 	{
-		perror("ERROR: bind() failed.");
+		perror("bind() failed.");
 		exit(EXIT_FAILURE);
 	}
 
 	if(listen(server_sockfd.fd,MAXN_FD-1) == -1)
 	{
-		perror("ERROR: listen() failed.");
+		perror("listen() failed.");
 		exit(EXIT_FAILURE);
 	}
 
@@ -92,15 +263,16 @@ void * server_routine(void * arg)
 		if(client_sockfd != -1)
 		{
 			pthread_mutex_lock(&stack.mutex);
-			stack.fds[stack.nfds].fd = client_sockfd;
-			stack.nfds++;
+			stack.connections[stack.nconnections].fd.fd = client_sockfd;
+			stack.connections[stack.nconnections].sh_files = NULL;
+			stack.nconnections++;
 			pthread_mutex_unlock(&stack.mutex);
 			pthread_cond_signal(&stack.cond);
 		}
 	}
 
 	puts("poll() failed. (routine)");
-	//exit(EXIT_FAILURE);
+	exit(EXIT_FAILURE);
 	return NULL;
 }
 
@@ -114,7 +286,7 @@ bool init_server(list_t * _clients, list_t * _groups, size_t nsubroutines)
 
 	for(size_t i = 0; i < MAXN_FD-1; i++)
 	{
-		stack.fds[i].events = POLLIN|POLLOUT;
+		stack.connections[i].fd.events = POLLIN|POLLOUT;
 	}
 
 	if(pthread_create(&routine,NULL,server_routine,NULL) != 0)
