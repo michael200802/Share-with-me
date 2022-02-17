@@ -28,7 +28,7 @@ int main()
 	char buffer[100], buffer1[100], option = '\0';
 	node_t * node;
 
-	//init_server(&clients,&groups,MAXN_FD);
+	init_server(&clients,&groups,MAXN_FD);
 
 	do
 	{
@@ -137,7 +137,7 @@ int main()
 				}
 				get_char();
 				break;
-			case '3'://add file
+			case '3'://add group
 				printf("New group: ");
 				get_str(buffer);
 				switch(add_group(&groups,buffer))
@@ -154,7 +154,7 @@ int main()
 				}
 				get_char();
 				break;
-			case '4'://rm file
+			case '4'://rm group
 				printf("Group to remove: ");
 				get_str(buffer);
 				switch(rm_node(&groups,buffer))
@@ -168,7 +168,7 @@ int main()
 				}
 				get_char();
 				break;
-			case '5':
+			case '5'://add file
 				printf("Group: ");
 				get_str(buffer);
 				node = find_node(&groups,buffer);
@@ -197,7 +197,7 @@ int main()
 				}
 				get_char();
 				break;
-			case '6':
+			case '6'://rm file
 				printf("Group: ");
 				get_str(buffer);
 				node = find_node(&groups,buffer);

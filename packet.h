@@ -1,9 +1,11 @@
 #pragma once
 
 #include <stdint.h>
+#include <limits.h>
 
 //size_t for names
 typedef unsigned char namesize_t;
+#define NAMESIZE_MAX UCHAR_MAX
 
 //portable size_t
 typedef int64_t psize_t;
@@ -19,9 +21,4 @@ typedef struct
     psize_t name_len;
 }packetsize_t;
 
-//packet
-typedef struct
-{
-    psize_t file_size;
-    char * file;
-}packet_t;
+#define FILE_BLOCK_SIZE 100

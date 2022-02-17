@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include "packet.h"
+#include "port.h"
 
 #define MAXN_FD 1021
 

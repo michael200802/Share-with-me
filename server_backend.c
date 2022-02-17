@@ -6,7 +6,6 @@ typedef struct
 	list_t * sh_files;
 }connection_t;
 
-
 typedef struct
 {
 	connection_t connections[MAXN_FD-1];
@@ -27,7 +26,7 @@ void * server_subroutine(void * arg)
 
 	while(true)
 	{
-		//get a client 
+		//get a client
 		pthread_mutex_lock(&stack.mutex);
 
 		while(stack.nconnections == 0)
@@ -59,7 +58,7 @@ void * server_subroutine(void * arg)
 			}
 			else
 			{
-				if(recv(client.fd, &pack_type, sizeof(packet_type_t), 0) != sizeof(packet_type_t))
+				if(recv(client.fd, &pack_type, sizeof(pack_type), 0) != sizeof(pack_type))
 				{
 					close(client.fd);
 					continue;
@@ -90,13 +89,13 @@ void * server_subroutine(void * arg)
 						continue;
 					}
 
-					if (recv(client.fd, client_name, client_name_len, 0) == client_name_len)
+					if (recv(client.fd, client_name, client_name_len, 0) != client_name_len)
 					{
 						free(client_name);
 						close(client.fd);
 						continue;
 					}
-					
+
 					//find the client
 					node = find_node(clients, client_name);
 
@@ -110,11 +109,16 @@ void * server_subroutine(void * arg)
 
 						sh_files = &((group_t*)node->elem)->shared_files;
 
+						client.events = POLLOUT | POLLIN;
+
 						pthread_mutex_lock(&stack.mutex);
 						stack.connections[stack.nconnections].fd = client;
 						stack.connections[stack.nconnections].sh_files = sh_files;
 						stack.nconnections++;
 						pthread_mutex_unlock(&stack.mutex);
+						pthread_cond_signal(&stack.cond);
+
+						//printf("%s/%d logged in.\n",client_name, client.fd);
 					}
 					else
 					{
@@ -125,15 +129,25 @@ void * server_subroutine(void * arg)
 					free(client_name);
 				}
 				break;
-			case PT_REQUEST_FOR_UPDATE:	
+			case PT_REQUEST_FOR_UPDATE:
 					//send every file
+					//printf("%d is requesting update.\n",client.fd);
 					{
 						bool error_with_connection = false;
+						psize_t nfiles = sh_files->nnodes;
+
+						if(send(client.fd, &nfiles, sizeof(nfiles), 0) != sizeof(nfiles))
+						{
+							close(client.fd);
+							continue;
+						}
+
 						scroll_through_list
 						(
 							(*sh_files),
 							ptrtonode,
 							{
+
 								const shared_file_t * file;
 								struct stat file_stat;
 								size_t file_size;
@@ -167,7 +181,7 @@ void * server_subroutine(void * arg)
 									continue;
 								}
 
-								packsize.name_len = file->name_len;
+								packsize.name_len = file->name_len+1;
 								packsize.file_size = file_size;
 
 								if(send(client.fd, &packsize, sizeof(packsize), 0) != sizeof(packsize))
@@ -175,10 +189,10 @@ void * server_subroutine(void * arg)
 									error_with_connection = true;
 									close(client.fd);
 									munmap(mapped_file,file_size);
-									break;	
+									break;
 								}
 
-								if(send(client.fd, file->name, file->name_len, 0) != file->name_len)
+								if(send(client.fd, file->name, packsize.name_len, 0) != packsize.name_len)
 								{
 									error_with_connection = true;
 									close(client.fd);
@@ -194,29 +208,33 @@ void * server_subroutine(void * arg)
 									break;
 								}
 
-								munmap(mapped_file,file_size);	
+								munmap(mapped_file,file_size);
 							}
 						);
+
 						if(error_with_connection == false)
 						{
 							pthread_mutex_lock(&stack.mutex);
 							stack.connections[stack.nconnections] = connection;
+							stack.nconnections++;
 							pthread_mutex_unlock(&stack.mutex);
+							pthread_cond_signal(&stack.cond);
 						}
 					}
 				break;
-			
+
 			case PT_LOGOUT:
 				close(client.fd);
 				break;
-			
+
 			default:
 				close(client.fd);
 				break;
 			}
 
-	
+
 		}
+
 	}
 
 	puts("poll() failed. (subroutine)");
@@ -230,7 +248,7 @@ void * server_routine(void * arg)
 	struct pollfd server_sockfd;
 
 	sockaddr.sin_family = AF_INET;
-	sockaddr.sin_port = htons(8081);
+	sockaddr.sin_port = htons(PORT);
 	sockaddr.sin_addr.s_addr = INADDR_ANY;
 	for(size_t i = 0; i < 8; i++)
 	{
@@ -264,6 +282,7 @@ void * server_routine(void * arg)
 		{
 			pthread_mutex_lock(&stack.mutex);
 			stack.connections[stack.nconnections].fd.fd = client_sockfd;
+			stack.connections[stack.nconnections].fd.events = POLLIN;
 			stack.connections[stack.nconnections].sh_files = NULL;
 			stack.nconnections++;
 			pthread_mutex_unlock(&stack.mutex);
@@ -298,6 +317,6 @@ bool init_server(list_t * _clients, list_t * _groups, size_t nsubroutines)
 	{
 		pthread_create(&subroutines,NULL,server_subroutine,NULL);
 	}
-	
+
 	return true;
 }

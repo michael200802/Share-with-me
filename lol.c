@@ -10,3 +10,4 @@ int main()
 	printf("%d\n",poll(&fd,1,-1));
 	return 0;
 }
+
