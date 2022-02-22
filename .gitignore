@@ -1,6 +1,8 @@
 *.o
+*.obj
 .vscode/
-linux_client
 michu/
-lol.c
+linux_client
+wnd_client.exe
 server
+lol.c

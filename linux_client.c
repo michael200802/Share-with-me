@@ -18,7 +18,7 @@ int main(int argc, char ** argv)
     struct in_addr ** addr_list;
     char ipaddr[INET_ADDRSTRLEN];
 
-    const char * client_name;
+    char * client_name;
     namesize_t namesize;
 
     psize_t nfiles;

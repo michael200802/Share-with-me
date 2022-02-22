@@ -7,6 +7,8 @@
 #include "port.h"
 #include "packet.h"
 
+#pragma comment(lib,"ws2_32.lib")
+
 int main(int argc, char ** argv)
 { 
     int sockfd;
