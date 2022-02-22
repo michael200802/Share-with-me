@@ -1,6 +1,6 @@
 *.o
-*lol.c
 .vscode/
 linux_client
-server
 michu/
+lol.c
+server

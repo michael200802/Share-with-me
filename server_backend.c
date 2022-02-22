@@ -58,7 +58,7 @@ void * server_subroutine(void * arg)
 			}
 			else
 			{
-				if(recv(client.fd, &pack_type, sizeof(pack_type), 0) != sizeof(pack_type))
+				if(recvpack(client.fd, &pack_type, sizeof(pack_type)) == false)
 				{
 					close(client.fd);
 					continue;
@@ -76,7 +76,7 @@ void * server_subroutine(void * arg)
 
 					//get client's name
 
-					if (recv(client.fd, &client_name_len, sizeof(client_name_len), 0) != sizeof(client_name_len) || client_name_len == 0)
+					if (recvpack(client.fd, &client_name_len, sizeof(client_name_len)) == false || client_name_len == 0)
 					{
 						close(client.fd);
 						continue;
@@ -89,7 +89,7 @@ void * server_subroutine(void * arg)
 						continue;
 					}
 
-					if (recv(client.fd, client_name, client_name_len, 0) != client_name_len)
+					if (recvpack(client.fd, client_name, client_name_len) == false)
 					{
 						free(client_name);
 						close(client.fd);
@@ -131,12 +131,12 @@ void * server_subroutine(void * arg)
 				break;
 			case PT_REQUEST_FOR_UPDATE:
 					//send every file
-					//printf("%d is requesting update.\n",client.fd);
+					//printf("%d is requesting update: ",client.fd);
 					{
 						bool error_with_connection = false;
 						psize_t nfiles = sh_files->nnodes;
 
-						if(send(client.fd, &nfiles, sizeof(nfiles), 0) != sizeof(nfiles))
+						if(sendpack(client.fd, &nfiles, sizeof(nfiles)) == false)
 						{
 							close(client.fd);
 							continue;
@@ -147,8 +147,7 @@ void * server_subroutine(void * arg)
 							(*sh_files),
 							ptrtonode,
 							{
-
-								const shared_file_t * file;
+								shared_file_t * file;
 								struct stat file_stat;
 								size_t file_size;
 								char * mapped_file;
@@ -158,21 +157,23 @@ void * server_subroutine(void * arg)
 
 								if(fstat(file->fd,&file_stat) == -1 || file_stat.st_ctime == file->last_change)
 								{
-									if(send(client.fd, &packsize, sizeof(packsize), 0) != sizeof(packsize))
+									if(sendpack(client.fd, &packsize, sizeof(packsize)) == false)
 									{
 										error_with_connection = true;
 										close(client.fd);
 										break;
 									}
+									//puts("Already updated.");
 									continue;
 								}
+								file->last_change = file_stat.st_ctime;
 
 								file_size = file_stat.st_size;
 
 								mapped_file = mmap(NULL,file_size,PROT_READ,MAP_PRIVATE,file->fd,0);
 								if(mapped_file == (char *)-1)
 								{
-									if(send(client.fd, &packsize, sizeof(packsize), 0) != sizeof(packsize))
+									if(sendpack(client.fd, &packsize, sizeof(packsize)) == false)
 									{
 										error_with_connection = true;
 										close(client.fd);
@@ -184,7 +185,7 @@ void * server_subroutine(void * arg)
 								packsize.name_len = file->name_len+1;
 								packsize.file_size = file_size;
 
-								if(send(client.fd, &packsize, sizeof(packsize), 0) != sizeof(packsize))
+								if(sendpack(client.fd, &packsize, sizeof(packsize)) == false)
 								{
 									error_with_connection = true;
 									close(client.fd);
@@ -192,7 +193,7 @@ void * server_subroutine(void * arg)
 									break;
 								}
 
-								if(send(client.fd, file->name, packsize.name_len, 0) != packsize.name_len)
+								if(sendpack(client.fd, file->name, packsize.name_len) == false)
 								{
 									error_with_connection = true;
 									close(client.fd);
@@ -200,7 +201,7 @@ void * server_subroutine(void * arg)
 									break;
 								}
 
-								if(send(client.fd, mapped_file, file_size, 0) != file_size)
+								if(sendpack(client.fd, mapped_file, file_size) == false)
 								{
 									error_with_connection = true;
 									close(client.fd);
@@ -209,6 +210,8 @@ void * server_subroutine(void * arg)
 								}
 
 								munmap(mapped_file,file_size);
+
+								//puts("Update completed.");
 							}
 						);
 
@@ -302,11 +305,6 @@ bool init_server(list_t * _clients, list_t * _groups, size_t nsubroutines)
 
 	clients = _clients;
 	groups = _groups;
-
-	for(size_t i = 0; i < MAXN_FD-1; i++)
-	{
-		stack.connections[i].fd.events = POLLIN|POLLOUT;
-	}
 
 	if(pthread_create(&routine,NULL,server_routine,NULL) != 0)
 	{

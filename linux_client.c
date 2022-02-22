@@ -11,8 +11,7 @@
 #include "packet.h"
 
 int main(int argc, char ** argv)
-{
-    
+{ 
     int sockfd;
     struct sockaddr_in sockaddr;
     struct hostent * hostentry;
@@ -51,7 +50,7 @@ int main(int argc, char ** argv)
         namesize = size;
     }
 
-    hostentry = gethostbyname("localhost");
+    hostentry = gethostbyname("adachitoshimamura.ddns.net");
 
     addr_list = (struct in_addr **)hostentry->h_addr_list;
 
@@ -77,14 +76,14 @@ int main(int argc, char ** argv)
         return -1;
     }
 
-    if(send(sockfd, &namesize, sizeof(namesize), 0) != sizeof(namesize))
+    if(sendpack(sockfd, &namesize, sizeof(namesize)) == false)
     {
         puts("Error at login: Couldn't send the namesize.");
         close(sockfd);
         return -1;
     }
 
-    if(send(sockfd, client_name, namesize, 0) != namesize)
+    if(sendpack(sockfd, client_name, namesize) == false)
     {
         puts("Error at login: Couldn't send the client's name");
         close(sockfd);
@@ -100,14 +99,14 @@ int main(int argc, char ** argv)
     {
 
         packtype = PT_REQUEST_FOR_UPDATE;
-        if(send(sockfd, &packtype, sizeof(packtype), 0) != sizeof(packtype))
+        if(sendpack(sockfd, &packtype, sizeof(packtype)) == false)
         {
             puts("Error at requesting an update: Couldn't request for an update.");
             close(sockfd);
             return -1;
         }
 
-        if(recv(sockfd, &nfiles, sizeof(nfiles), 0) != sizeof(nfiles))
+        if(recvpack(sockfd, &nfiles, sizeof(nfiles)) == false)
         {
             puts("Error at updating: Couldn't get number of files to be recieved.");
             close(sockfd);
@@ -116,7 +115,7 @@ int main(int argc, char ** argv)
 
         for(psize_t i = 0; i < nfiles; i++)
         {
-            if(recv(sockfd, &packsize, sizeof(packsize), 0) != sizeof(packsize))
+            if(recvpack(sockfd, &packsize, sizeof(packsize)) == false)
             {
                 puts("Error at updating: Couldn't get the size of the packet/file to be recieved.");
                 close(sockfd);
@@ -130,7 +129,7 @@ int main(int argc, char ** argv)
 
             filename = (char*)malloc(packsize.name_len);
 
-            if(recv(sockfd, filename, packsize.name_len, 0) != packsize.name_len)
+            if(recvpack(sockfd, filename, packsize.name_len) == false)
             {
                 puts("Error at updating: Couldn't receive the name of the file.");
                 close(sockfd);
@@ -155,9 +154,9 @@ int main(int argc, char ** argv)
 
             if(packsize.file_size != FILE_BLOCK_SIZE)
             {
-                if(recv(sockfd, buffer, packsize.file_size%FILE_BLOCK_SIZE, 0) !=  packsize.file_size%FILE_BLOCK_SIZE)
+                if(recvpack(sockfd, buffer, packsize.file_size%FILE_BLOCK_SIZE) == false)
                 {
-                    puts("Error at updating: Coulnd't get the first block of the file.");
+                    puts("Error at updating: Couldn't get the first block of the file.");
                     close(sockfd);
                     fclose(file);
                     return -1;
@@ -174,9 +173,9 @@ int main(int argc, char ** argv)
 
             while(packsize.file_size != 0)
             {
-                if(recv(sockfd, buffer, FILE_BLOCK_SIZE, 0) != FILE_BLOCK_SIZE)
+                if(recvpack(sockfd, buffer, FILE_BLOCK_SIZE) == false)
                 {
-                    puts("Error at updating: Coulnd't get another block of the file.");
+                    puts("Error at updating: Couldn't get another block of the file.");
                     close(sockfd);
                     fclose(file);
                     return -1;

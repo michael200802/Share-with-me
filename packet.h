@@ -2,6 +2,11 @@
 
 #include <stdint.h>
 #include <limits.h>
+#include <stdbool.h>
+#include <sys/socket.h>
+#include <errno.h>
+
+typedef unsigned char byte_t;
 
 //size_t for names
 typedef unsigned char namesize_t;
@@ -22,3 +27,7 @@ typedef struct
 }packetsize_t;
 
 #define FILE_BLOCK_SIZE 100
+
+bool sendpack(const int sockfd, void * _pack, size_t size);
+
+bool recvpack(const int sockfd, void * _pack, size_t size);

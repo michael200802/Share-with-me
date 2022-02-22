@@ -44,7 +44,7 @@ inline shared_file_t * create_shared_file(const char * path)
         free(file);
         return NULL;
     }
-    file->last_change = file_status.st_ctime;
+    file->last_change = 0;
 
     return file;
 }

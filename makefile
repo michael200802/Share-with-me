@@ -1,9 +1,9 @@
 compiler=gcc
 
-server: server.o server_backend.o list.o list_clients.o list_groups.o list_shared_files.o
+server: server.o server_backend.o list.o list_clients.o list_groups.o list_shared_files.o packet.o
 	$(compiler) $? -pthread -o $@
 
-linux_client: linux_client.c port.h packet.h
+linux_client: linux_client.c port.h packet.h packet.o
 	$(compiler) linux_client.c -o $@
 
 server.o: server.c
@@ -11,6 +11,9 @@ server.o: server.c
 
 server_backend.o: server_backend.h server_backend.c port.h packet.h
 	$(compiler) -c server_backend.c -o $@
+
+packet.o: packet.h packet.c
+	$(compiler) -c packet.c -o $@
 
 list_clients.o: list_clients.h list_clients.c
 	$(compiler) -c list_clients.c -o $@
